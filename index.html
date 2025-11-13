@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duel PVP — Enter the Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{
+    --gold:#FFD64D;
+    --gold-hi:#FFF3A3;
+    --bg:#0b0f12;
+
+    /* Glow slightly up + right from v8 */
+    --glow-x: 80%;
+    --glow-y: 32%;
+    --glow-w: 211px;
+    --glow-h: 366px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:#e6ecf1;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+  .bg{position:fixed;inset:0;overflow:hidden;z-index:0}
+  .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:contrast(1.04) saturate(1.02)}
+
+  /* Slower coordinated glow (same as v8, 6s, slightly subdued) */
+  @keyframes lavaPulse6{
+    0%,100% { opacity:.12; filter:brightness(1.0); }
+    25%     { opacity:.24; filter:brightness(1.12); }
+    50%     { opacity:.06; filter:brightness(0.92); }
+    75%     { opacity:.30; filter:brightness(1.18); }
+  }
+
+  .bg::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient( var(--glow-w) var(--glow-h) at var(--glow-x) var(--glow-y),
+        rgba(255,220,170,.45), rgba(255,170,120,.14) 45%, rgba(255,140,90,.04) 70%, transparent 72%),
+      radial-gradient( 96px 180px at calc(var(--glow-x) + 5%) calc(var(--glow-y) - 5%),
+        rgba(255,235,205,.18), rgba(255,170,120,.04) 60%, transparent 65%);
+    mix-blend-mode: screen;
+    animation: lavaPulse6 6s ease-in-out infinite;
+  }
+
+  /* Brand text in corner */
+  .brand{
+    position:fixed; left:18px; top:14px; z-index:6;
+    text-align:left; font-family:'Press Start 2P', monospace; line-height:1.2;
+    color:#e6ecf1;
+  }
+  .brand .title{
+    color:var(--gold); text-shadow:6px 6px 0 #000, 0 -2px 0 rgba(255,243,163,.4);
+    letter-spacing:.06em;
+    font-size:28px;
+    margin-bottom:6px;
+    /* Title stays static – no animation */
+  }
+
+  /* SUPER-WHITE slogan glow: smooth single fade in/out */
+  .brand .slogan{
+    font-size:14px;
+    color:#ffffff;
+    animation: sloganPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes sloganPulse{
+    0%   { opacity:0;   text-shadow:none; }
+    40%  { opacity:1;   text-shadow:0 0 14px rgba(255,255,255,.95), 0 0 26px rgba(255,255,255,.65), 0 2px 0 rgba(0,0,0,.75); }
+    60%  { opacity:1;   text-shadow:0 0 14px rgba(255,255,255,.95), 0 0 26px rgba(255,255,255,.65), 0 2px 0 rgba(0,0,0,.75); }
+    100% { opacity:0;   text-shadow:none; }
+  }
+
+  .frame{position:fixed;inset:0;display:grid;place-items:end center;padding-bottom:10vh; z-index:4}
+  .panel{width:min(680px,92vw); background:#c9b083; border:2px solid #5a4328; border-radius:8px;
+         box-shadow:0 14px 0 #2b2015, inset 0 0 0 2px rgba(255,255,255,.25);
+         padding:16px 18px 18px; font-family:'Press Start 2P', monospace; color:#232016;
+         background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.05), rgba(0,0,0,.05) 2px, transparent 2px, transparent 6px);}
+
+  .sys{font-size:14px;margin-bottom:12px}
+  .blink{animation:blinkDot 1s infinite}
+  @keyframes blinkDot{0%,50%{opacity:1}50.1%,100%{opacity:0}}
+
+  .bar{display:flex;gap:10px;align-items:center}
+  .email{flex:1;padding:10px 12px;border:2px solid #7e684a;border-radius:8px;background:#eadab8;color:#232016;
+         font-family:'Press Start 2P', monospace;font-size:12px}
+  .btn{padding:10px 14px;border:2px solid #332514;border-radius:8px;background:#8f6b2a;color:#fff;
+       font-family:'Press Start 2P', monospace; font-size:12px; cursor:pointer;
+       box-shadow:0 4px 0 #332514;}
+  .btn:active{transform:translateY(2px); box-shadow:0 2px 0 #332514}
+
+  .footer{position:fixed;right:20px;bottom:16px;font-size:12px;opacity:.85; z-index:3}
+  .debug .bg::after{ outline:1px dashed rgba(255,255,255,.35) }
+  .debug .glow-handle{
+    position:fixed; width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.95);
+    box-shadow:0 0 14px rgba(255,255,255,.85), 0 0 30px rgba(255,255,255,.5) inset;
+    border:2px solid #000; cursor:move; z-index:20; transform:translate(-50%,-50%);
+  }
+  .debug .hint{
+    position:fixed; left:12px; bottom:12px; z-index:20; font:12px/1.4 'Press Start 2P', monospace;
+    background:rgba(0,0,0,.55); padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.2);
+  }
+
+/* Login view styles */
+:root{
+    --gold:#FFD64D;
+    --gold-hi:#FFF3A3;
+    --bg:#0b0f12;
+
+    /* Glow slightly up + right from v8 */
+    --glow-x: 80%;
+    --glow-y: 32%;
+    --glow-w: 211px;
+    --glow-h: 366px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:#e6ecf1;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+  .bg{position:fixed;inset:0;overflow:hidden;z-index:0}
+  .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:contrast(1.04) saturate(1.02)}
+
+  /* Slower coordinated glow (same as v8, 6s, slightly subdued) */
+  @keyframes lavaPulse6{
+    0%,100% { opacity:.12; filter:brightness(1.0); }
+    25%     { opacity:.24; filter:brightness(1.12); }
+    50%     { opacity:.06; filter:brightness(0.92); }
+    75%     { opacity:.30; filter:brightness(1.18); }
+  }
+
+  .bg::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient( var(--glow-w) var(--glow-h) at var(--glow-x) var(--glow-y),
+        rgba(255,220,170,.45), rgba(255,170,120,.14) 45%, rgba(255,140,90,.04) 70%, transparent 72%),
+      radial-gradient( 96px 180px at calc(var(--glow-x) + 5%) calc(var(--glow-y) - 5%),
+        rgba(255,235,205,.18), rgba(255,170,120,.04) 60%, transparent 65%);
+    mix-blend-mode: screen;
+    animation: lavaPulse6 6s ease-in-out infinite;
+  }
+
+  /* Brand text in corner */
+  .brand{
+    position:fixed; left:18px; top:14px; z-index:6;
+    text-align:left; font-family:'Press Start 2P', monospace; line-height:1.2;
+    color:#e6ecf1;
+  }
+  .brand .title{
+    color:var(--gold); text-shadow:6px 6px 0 #000, 0 -2px 0 rgba(255,243,163,.4);
+    letter-spacing:.06em;
+    font-size:28px;
+    margin-bottom:6px;
+    /* Title stays static – no animation */
+  }
+
+  /* SUPER-WHITE slogan glow: smooth single fade in/out */
+  .brand .slogan{
+    font-size:14px;
+    color:#ffffff;
+    animation: sloganPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes sloganPulse{
+    0%   { opacity:0;   text-shadow:none; }
+    40%  { opacity:1;   text-shadow:0 0 14px rgba(255,255,255,.95), 0 0 26px rgba(255,255,255,.65), 0 2px 0 rgba(0,0,0,.75); }
+    60%  { opacity:1;   text-shadow:0 0 14px rgba(255,255,255,.95), 0 0 26px rgba(255,255,255,.65), 0 2px 0 rgba(0,0,0,.75); }
+    100% { opacity:0;   text-shadow:none; }
+  }
+
+  .frame{position:fixed;inset:0;display:grid;place-items:end center;padding-bottom:10vh; z-index:4}
+  .panel{width:min(680px,92vw); background:#c9b083; border:2px solid #5a4328; border-radius:8px;
+         box-shadow:0 14px 0 #2b2015, inset 0 0 0 2px rgba(255,255,255,.25);
+         padding:16px 18px 18px; font-family:'Press Start 2P', monospace; color:#232016;
+         background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.05), rgba(0,0,0,.05) 2px, transparent 2px, transparent 6px);}
+
+  .sys{font-size:14px;margin-bottom:12px}
+  .blink{animation:blinkDot 1s infinite}
+  @keyframes blinkDot{0%,50%{opacity:1}50.1%,100%{opacity:0}}
+
+  .bar{display:flex;gap:10px;align-items:center}
+  .email{flex:1;padding:10px 12px;border:2px solid #7e684a;border-radius:8px;background:#eadab8;color:#232016;
+         font-family:'Press Start 2P', monospace;font-size:12px}
+  .btn{padding:10px 14px;border:2px solid #332514;border-radius:8px;background:#8f6b2a;color:#fff;
+       font-family:'Press Start 2P', monospace; font-size:12px; cursor:pointer;
+       box-shadow:0 4px 0 #332514;}
+  .btn:active{transform:translateY(2px); box-shadow:0 2px 0 #332514}
+
+
+.helper{margin-top:10px;font-size:10px;color:#ffffff;text-align:right;}
+.helper a{color:#ffffff;text-decoration:none;}
+.helper a:hover{text-decoration:underline;}
+
+  .footer{position:fixed;right:20px;bottom:16px;font-size:12px;opacity:.85; z-index:3}
+  .debug .bg::after{ outline:1px dashed rgba(255,255,255,.35) }
+  .debug .glow-handle{
+    position:fixed; width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.95);
+    box-shadow:0 0 14px rgba(255,255,255,.85), 0 0 30px rgba(255,255,255,.5) inset;
+    border:2px solid #000; cursor:move; z-index:20; transform:translate(-50%,-50%);
+  }
+  .debug .hint{
+    position:fixed; left:12px; bottom:12px; z-index:20; font:12px/1.4 'Press Start 2P', monospace;
+    background:rgba(0,0,0,.55); padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.2);
+  }
+
+
+  .frame-login{position:fixed;inset:0;display:grid;place-items:end center;padding-bottom:10vh; z-index:4;}
+
+/* Dashboard view styles */
+:root{
+    --gold:#FFD64D;
+    --gold-hi:#FFF3A3;
+    --bg:#0b0f12;
+
+    /* Glow slightly up + right from v8 */
+    --glow-x: 80%;
+    --glow-y: 32%;
+    --glow-w: 211px;
+    --glow-h: 366px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:#e6ecf1;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+  .bg{position:fixed;inset:0;overflow:hidden;z-index:0}
+  .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:contrast(1.04) saturate(1.02)}
+
+  /* Slower coordinated glow (same as v8, 6s, slightly subdued) */
+  @keyframes lavaPulse6{
+    0%,100% { opacity:.12; filter:brightness(1.0); }
+    25%     { opacity:.24; filter:brightness(1.12); }
+    50%     { opacity:.06; filter:brightness(0.92); }
+    75%     { opacity:.30; filter:brightness(1.18); }
+  }
+
+  .bg::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient( var(--glow-w) var(--glow-h) at var(--glow-x) var(--glow-y),
+        rgba(255,220,170,.45), rgba(255,170,120,.14) 45%, rgba(255,140,90,.04) 70%, transparent 72%),
+      radial-gradient( 96px 180px at calc(var(--glow-x) + 5%) calc(var(--glow-y) - 5%),
+        rgba(255,235,205,.18), rgba(255,170,120,.04) 60%, transparent 65%);
+    mix-blend-mode: screen;
+    animation: lavaPulse6 6s ease-in-out infinite;
+  }
+
+  /* Brand text in corner */
+  .brand{
+    position:fixed; left:18px; top:14px; z-index:6;
+    text-align:left; font-family:'Press Start 2P', monospace; line-height:1.2;
+    color:#e6ecf1;
+  }
+  .brand .title{
+    color:var(--gold); text-shadow:6px 6px 0 #000, 0 -2px 0 rgba(255,243,163,.4);
+    letter-spacing:.06em;
+    font-size:28px;
+    margin-bottom:6px;
+    /* Title stays static – no animation */
+  }
+
+  /* SUPER-WHITE slogan glow: smooth single fade in/out */
+  .brand .slogan{
+    font-size:14px;
+    color:#ffffff;
+    animation: sloganPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes sloganPulse{
+    0%   { opacity:0;   text-shadow:none; }
+    40%  { opacity:1;   text-shadow:0 0 14px rgba(255,255,255,.95), 0 0 26px rgba(255,255,255,.65), 0 2px 0 rgba(0,0,0,.75); }
+    60%  { opacity:1;   text-shadow:0 0 14px rgba(255,255,255,.95), 0 0 26px rgba(255,255,255,.65), 0 2px 0 rgba(0,0,0,.75); }
+    100% { opacity:0;   text-shadow:none; }
+  }
+
+  .frame{position:fixed;inset:0;display:grid;place-items:end center;padding-bottom:10vh; z-index:4}
+  .panel{width:min(680px,92vw); background:#c9b083; border:2px solid #5a4328; border-radius:8px;
+         box-shadow:0 14px 0 #2b2015, inset 0 0 0 2px rgba(255,255,255,.25);
+         padding:16px 18px 18px; font-family:'Press Start 2P', monospace; color:#232016;
+         background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.05), rgba(0,0,0,.05) 2px, transparent 2px, transparent 6px);}
+
+  .sys{font-size:14px;margin-bottom:12px}
+  .blink{animation:blinkDot 1s infinite}
+  @keyframes blinkDot{0%,50%{opacity:1}50.1%,100%{opacity:0}}
+
+  .bar{display:flex;gap:10px;align-items:center}
+  .email{flex:1;padding:10px 12px;border:2px solid #7e684a;border-radius:8px;background:#eadab8;color:#232016;
+         font-family:'Press Start 2P', monospace;font-size:12px}
+  .btn{padding:10px 14px;border:2px solid #332514;border-radius:8px;background:#8f6b2a;color:#fff;
+       font-family:'Press Start 2P', monospace; font-size:12px; cursor:pointer;
+       box-shadow:0 4px 0 #332514;}
+  .btn:active{transform:translateY(2px); box-shadow:0 2px 0 #332514}
+
+
+.helper{margin-top:10px;font-size:10px;color:#ffffff;text-align:right;}
+.helper a{color:#ffffff;text-decoration:none;}
+.helper a:hover{text-decoration:underline;}
+
+  .footer{position:fixed;right:20px;bottom:16px;font-size:12px;opacity:.85; z-index:3}
+  .debug .bg::after{ outline:1px dashed rgba(255,255,255,.35) }
+  .debug .glow-handle{
+    position:fixed; width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.95);
+    box-shadow:0 0 14px rgba(255,255,255,.85), 0 0 30px rgba(255,255,255,.5) inset;
+    border:2px solid #000; cursor:move; z-index:20; transform:translate(-50%,-50%);
+  }
+  .debug .hint{
+    position:fixed; left:12px; bottom:12px; z-index:20; font:12px/1.4 'Press Start 2P', monospace;
+    background:rgba(0,0,0,.55); padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.2);
+  }
+
+  /* Disable glow overlay on dashboard */
+  .bg::after{content:none;}
+
+  .frame-dashboard{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    padding:0 4vw 8vh 0; /* bottom-right, OSRS-style side panel */
+    z-index:4;
+  }
+
+  .panel-quests{
+    width:min(380px,90vw); /* slimmer like OSRS side panel */
+    max-height:72vh;
+    background:#c9b083;
+    border:2px solid #5a4328;
+    border-radius:8px;
+    box-shadow:0 14px 0 #2b2015, inset 0 0 0 2px rgba(255,255,255,.25);
+    padding:12px 14px 14px;
+    font-family:'Press Start 2P', monospace;
+    color:#232016;
+    background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.05), rgba(0,0,0,.05) 2px, transparent 2px, transparent 6px);
+    display:flex;
+    flex-direction:column;
+  }
+
+  .panel-header{display:flex;gap:8px;margin-bottom:8px;}
+  .tabs{display:flex;gap:6px;}
+  .tab-btn{position:relative;display:inline-flex;align-items:center;gap:6px;
+           padding:6px 10px 6px 8px;border:2px solid #44301d;border-radius:6px;
+           background:#926a34;color:#fff;font-size:10px;cursor:pointer;
+           box-shadow:0 3px 0 #2b1d10;}
+  .tab-btn span.icon{width:12px;height:12px;image-rendering:pixelated;display:inline-block;}
+  .icon-quests{background:linear-gradient(#f8e0a8,#f1c55d);
+    box-shadow:0 0 0 1px #3b2a18,0 2px 0 #3b2a18,2px 0 0 #3b2a18,-2px 0 0 #3b2a18;}
+  .icon-quests::after{content:"";display:block;width:4px;height:4px;margin:2px auto 0;
+    background:#5b2a24;box-shadow:0 4px 0 #5b2a24;}
+  .icon-inv{background:#2b3b46;
+    box-shadow:0 0 0 1px #10141a,0 2px 0 #10141a,2px 0 0 #10141a,-2px 0 0 #10141a;}
+  .icon-inv::before,
+  .icon-inv::after{content:"";display:block;margin:1px 2px;height:2px;
+    background:#6fb0c8;box-shadow:0 2px 0 #6fb0c8;}
+  .tab-btn.active{background:#f1c55d;color:#2b1d10;box-shadow:0 2px 0 #2b1d10;transform:translateY(1px);}
+
+  .panel-body{flex:1;overflow:auto;font-size:11px;margin-top:4px;}
+  .quest-title{font-size:13px;color:#f4e0a6;margin-bottom:8px;}
+  .quest-list{list-style:none;padding:0;margin:0;}
+  .quest-item{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-bottom:1px solid rgba(0,0,0,.15);}
+  .quest-bullet{width:8px;height:8px;margin-top:3px;background:#4da14f;
+    box-shadow:0 0 0 1px #1b3c18,0 0 8px rgba(77,161,79,.7);}
+  .quest-text-main{color:#173814;}
+  .quest-text-sub{color:#3e2b14;font-size:9px;margin-top:2px;}
+
+  .inv-title{font-size:13px;color:#f4e0a6;margin-bottom:8px;}
+  .code-card{margin-bottom:8px;padding:6px 8px;border-radius:6px;border:2px solid #5a4328;
+    background:#e5d1aa;font-size:10px;}
+  .code-label{color:#3e2b14;margin-bottom:3px;}
+  .code-value{font-size:11px;padding:4px 6px;border-radius:4px;background:#1b1b1b;color:#f5f5f5;letter-spacing:.08em;}
+  .code-actions{margin-top:4px;display:flex;gap:6px;}
+  .tiny-btn{padding:4px 6px;border-radius:4px;border:2px solid #43301b;background:#8f6b2a;
+    color:#fff;font-size:9px;cursor:pointer;font-family:'Press Start 2P', monospace;}
+  .tiny-btn:active{transform:translateY(1px);}
+
+  @media (max-width:720px){
+    .frame-dashboard{justify-content:center;padding:0 0 10vh 0;}
+    .panel-quests{max-height:70vh;}
+  }
+
+
+  .quest-extra{
+    margin-top:10px;
+  }
+  .quest-label{
+    font-family:"Press Start 2P",system-ui;
+    font-size:9px;
+    letter-spacing:.08em;
+    margin-bottom:4px;
+    display:block;
+  }
+  .quest-input{
+    width:100%;
+    min-height:72px;
+    background:#15191f;
+    border:2px solid #4b4030;
+    border-radius:4px;
+    padding:8px;
+    font-family:Menlo,monospace;
+    font-size:11px;
+    color:#f5f5f5;
+    resize:vertical;
+  }
+  .quest-input::placeholder{
+    color:#8c8c8c;
+  }
+  .quest-submit{
+    margin-top:8px;
+    padding:6px 14px;
+    background:#8c5b1f;
+    border:2px solid #3b2610;
+    border-radius:4px;
+    font-family:"Press Start 2P",system-ui;
+    font-size:9px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#fff4c0;
+    cursor:pointer;
+    box-shadow:0 3px 0 #3b2610;
+  }
+  .quest-submit:active{
+    transform:translateY(1px);
+    box-shadow:0 1px 0 #3b2610;
+  }
+</style>
+
+<body>
+  <div class="bg">
+    <img src="assets/bg-wildy.png" alt="Wilderness background">
+  </div>
+
+  <div class="brand">
+    <div class="title">DUEL PVP</div>
+    <div class="slogan">Real time, real skill, real rewards.</div>
+  </div>
+
+  <div id="view-root"></div>
+
+  <template id="tpl-landing">
+  <main class="frame">
+    <section class="panel" role="region" aria-label="Rune-style dialogue">
+      <div class="sys">Welcome to the arena<span class="blink">.</span></div>
+      <div class="bar">
+        <label style="min-width:70px">Code:</label>
+        <input id="code" class="email" type="text" placeholder="ENTER ACCESS CODE">
+        <button class="btn" id="join">JOIN</button>
+      </div>
+      <div style="margin-top:10px;font-size:10px;">
+        <a href="login.html" style="color:#fff3a3;text-decoration:none;">already winning?</a>
+      </div>
+    </section>
+  </main>
+  </template>
+
+  <template id="tpl-login">
+  <main class="frame-login">
+    <section class="panel" role="region" aria-label="Rune-style login dialogue">
+      <div class="sys">Welcome back, champion<span class="blink">.</span></div>
+      <div class="bar" style="margin-bottom:8px">
+        <label style="min-width:70px">Email:</label>
+        <input id="login-email" class="email" type="email" placeholder="name@example.com">
+      </div>
+      <div class="bar">
+        <label style="min-width:70px">Pass:</label>
+        <input id="login-pass" class="email" type="password" placeholder="********">
+        <button class="btn" id="login">LOG IN</button>
+      </div>
+    </section>
+  </main>
+  </template>
+
+  <template id="tpl-dashboard">
+  <main class="frame-dashboard">
+    <section class="panel-quests" aria-label="Quests and inventory">
+      <header class="panel-header">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="quests">
+            <span class="icon icon-quests"></span>
+            QUESTS
+          </button>
+          <button class="tab-btn" data-tab="inventory">
+            <span class="icon icon-inv"></span>
+            INVENTORY
+          </button>
+        </div>
+      </header>
+      <div class="panel-body" id="tab-quests">
+        <div class="quest-title">Quest Log</div>
+        <ul class="quest-list">
+          <li class="quest-item">
+            <div class="quest-bullet"></div>
+            <div>
+              <div class="quest-text-main">Invite 3 friends</div>
+              <div class="quest-text-sub">Share your codes. Each new warrior that joins earns you points.</div>
+            </div>
+          </li>
+          <li class="quest-item">
+            <div class="quest-bullet"></div>
+            <div>
+              <div class="quest-text-main">Follow @duelpvp</div>
+              <div class="quest-text-sub">Stay updated with drops, tourneys, and balance changes.</div>
+            </div>
+          </li>
+          <li class="quest-item">
+            <div class="quest-bullet"></div>
+            <div>
+              <div class="quest-text-main">Retweet the launch post</div>
+              <div class="quest-text-sub">Spread the word. Let more challengers enter the arena.</div>
+            </div>
+          </li>
+          <li class="quest-item">
+            <div class="quest-bullet"></div>
+            <div>
+              <div class="quest-text-main">Winner winner chicken dinner</div>
+              <div class="quest-text-sub">
+                Win any ranked solo queue game in one of these: CS2, League of Legends, Valorant, Apex Legends,
+                Call of Duty or Fortnite. Tweet a screenshot of your victory screen, then paste the tweet link below
+                and press submit.
+              </div>
+              <div class="quest-extra">
+                <label class="quest-label" for="tweet-url">Tweet link</label>
+                <textarea id="tweet-url" class="quest-input" placeholder="https://x.com/your-handle/status/1234567890"></textarea>
+                <button class="quest-submit" type="button">Submit</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="panel-body" id="tab-inventory" style="display:none">
+        <div class="inv-title">Invite Codes</div>
+        <div id="codes-container">
+          <div style="font-size:10px;color:#3e2b14;">Loading your codes<span id="codes-dot">.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </template>
+
+  <div class="footer">© 2025 Duel PVP</div>
+
+  <script>
+    // Lava glow debug (unchanged behavior)
+    const params = new URLSearchParams(location.search);
+    const debug = params.get('debug') === '1';
+    const gx = params.get('gx'), gy = params.get('gy'), gw = params.get('gw'), gh = params.get('gh');
+    if (gx) document.documentElement.style.setProperty('--glow-x', gx + (gx.includes('%') ? '' : '%'));
+    if (gy) document.documentElement.style.setProperty('--glow-y', gy + (gy.includes('%') ? '' : '%'));
+    if (gw) document.documentElement.style.setProperty('--glow-w', gw + (gw.match(/px|%/) ? '' : 'px'));
+    if (gh) document.documentElement.style.setProperty('--glow-h', gh + (gh.match(/px|%/) ? '' : 'px'));
+
+    if (debug) {
+      const handle = document.createElement('div');
+      handle.className = 'glow-handle';
+      document.body.appendChild(handle);
+
+      const setPos = (xPct, yPct) => {
+        document.documentElement.style.setProperty('--glow-x', xPct + '%');
+        document.documentElement.style.setProperty('--glow-y', yPct + '%');
+        handle.style.left = xPct + '%';
+        handle.style.top  = yPct + '%';
+      };
+
+      let dragging = false;
+
+      handle.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        handle.setPointerCapture(e.pointerId);
+      });
+      handle.addEventListener('pointerup', () => dragging = false);
+      handle.addEventListener('pointercancel', () => dragging = false);
+      handle.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const rect = document.body.getBoundingClientRect();
+        const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+        const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+        setPos(Math.max(0, Math.min(100, xPct)), Math.max(0, Math.min(100, yPct)));
+      });
+
+      window.addEventListener('keydown', (e) => {
+        const step = e.shiftKey ? 2 : 0.5;
+        let x = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow-x'));
+        let y = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow-y'));
+        if (e.key === 'ArrowLeft') x -= step;
+        if (e.key === 'ArrowRight') x += step;
+        if (e.key === 'ArrowUp') y -= step;
+        if (e.key === 'ArrowDown') y += step;
+        x = Math.max(0, Math.min(100, x));
+        y = Math.max(0, Math.min(100, y));
+        setPos(x, y);
+      });
+
+      const hint = document.createElement('div');
+      hint.className = 'hint';
+      hint.textContent = 'Debug: drag the dot or use arrow keys and then copy the final values in :root (--glow-x/--glow-y/--glow-w/--glow-h).';
+      document.body.appendChild(hint);
+    }
+
+    const viewRoot = document.getElementById('view-root');
+
+    function showView(id) {
+      const tpl = document.getElementById('tpl-' + id);
+      if (!tpl) return;
+      viewRoot.innerHTML = '';
+      viewRoot.appendChild(tpl.content.cloneNode(true));
+
+      // After content swap, (re)wire buttons in that view
+      wireView(id);
+    }
+
+    function wireView(id) {
+      if (id === 'landing') {
+        const joinBtn = document.getElementById('join');
+        if (joinBtn) {
+          joinBtn.addEventListener('click', () => {
+            const v = document.getElementById('code').value.trim();
+            if (!v) { alert('Enter an access code first'); return; }
+            showView('login');
+            history.pushState({ view: 'login' }, '', '#login');
+          });
+        }
+        const already = document.querySelector('a[href="login.html"]');
+        if (already) {
+          already.addEventListener('click', (e) => {
+            e.preventDefault();
+            showView('login');
+            history.pushState({ view: 'login' }, '', '#login');
+          });
+        }
+      } else if (id === 'login') {
+        const btn = document.getElementById('login');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            const email = document.getElementById('login-email').value.trim();
+            const pass  = document.getElementById('login-pass').value.trim();
+            try { localStorage.setItem('duelpvp_email', email); } catch (e) {}
+            showView('dashboard');
+            history.pushState({ view: 'dashboard' }, '', '#dashboard');
+          });
+        }
+      }
+
+      if (id === 'dashboard') {
+        // Recreate dashboard JS: tabs + invite codes
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const questsBody = document.getElementById('tab-quests');
+        const invBody = document.getElementById('tab-inventory');
+        tabButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (btn.getAttribute('data-tab') === 'quests') {
+              questsBody.style.display = 'block';
+              invBody.style.display = 'none';
+            } else {
+              questsBody.style.display = 'none';
+              invBody.style.display = 'block';
+            }
+          });
+        });
+
+        const email = (function(){
+          try { return localStorage.getItem('duelpvp_email') || 'USERNAME'; }
+          catch(e){ return 'USERNAME'; }
+        })();
+        const nameEls = document.querySelectorAll('.username-slot');
+        nameEls.forEach(el => el.textContent = email);
+
+        const codesContainer = document.getElementById('codes-container');
+        if (codesContainer) {
+          const codes = ['DUEL-2ACABC08','DUEL-38GEFF4B','DUEL-08AB3576'];
+          codesContainer.innerHTML = '';
+          codes.forEach((code, idx) => {
+            const card = document.createElement('div');
+            card.className = 'code-card';
+
+            const label = document.createElement('div');
+            label.className = 'code-label';
+            label.textContent = 'Code ' + (idx+1);
+
+            const value = document.createElement('div');
+            value.className = 'code-value';
+            value.textContent = code;
+
+            const actions = document.createElement('div');
+            actions.className = 'code-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'tiny-btn';
+            copyBtn.textContent = 'COPY';
+            copyBtn.addEventListener('click', () => {
+              navigator.clipboard.writeText(code).then(() => {
+                copyBtn.textContent = 'COPIED';
+                setTimeout(() => copyBtn.textContent = 'COPY', 1200);
+              }).catch(() => alert('Copy failed, grab it manually.'));
+            });
+
+            const shareBtn = document.createElement('button');
+            shareBtn.className = 'tiny-btn';
+            shareBtn.textContent = 'SHARE';
+            shareBtn.addEventListener('click', () => {
+              const url = 'https://duelpvp.com/?code=' + encodeURIComponent(code);
+              const text = 'Join me on Duel PVP with this code: ' + code;
+              if (navigator.share) {
+                navigator.share({ title:'Duel PVP', text, url }).catch(() => {});
+              } else {
+                alert(text + '\n' + url);
+              }
+            });
+
+            actions.appendChild(copyBtn);
+            actions.appendChild(shareBtn);
+            card.appendChild(label);
+            card.appendChild(value);
+            card.appendChild(actions);
+            codesContainer.appendChild(card);
+          });
+        }
+      }
+    }
+
+    window.addEventListener('popstate', (e) => {
+      const v = (e.state && e.state.view) || location.hash.replace('#','') || 'landing';
+      showView(v);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const initial = location.hash.replace('#','') || 'landing';
+      showView(initial);
+      history.replaceState({ view: initial }, '', '#' + initial);
+    });
+  </script>
+</body>
+</html>
